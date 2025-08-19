@@ -1,0 +1,20 @@
+{
+  "name": "ts-forward-proxy",
+  "version": "1.0.0",
+  "description": "A simple forward proxy in TypeScript",
+  "main": "dist/proxy.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/proxy.ts",
+    "build": "tsc",
+    "start": "node dist/proxy.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.2"
+  }
+}
