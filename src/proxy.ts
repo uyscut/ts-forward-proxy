@@ -1,5 +1,6 @@
 import http from 'http'
 import net from 'net'
+import { Duplex } from 'stream'
 import url from 'url'
 
 const PORT = 3000
@@ -12,7 +13,6 @@ const server = http.createServer((req, res) => {
     console.log(
         `[HTTP] ${req.method} ${parsed.protocol || 'http:'}//${parsed.hostname}${parsed.path}`
     )
-
 
     const options = {
         hostname: parsed.hostname,
@@ -43,8 +43,8 @@ const server = http.createServer((req, res) => {
 // Handle HTTPS tunneling with CONNECT
 server.on('connect', (req, clientSocket, head) => {
     const [host, port] = (req.url || '').split(':')
+    console.log(`[CONNECT] Tunnel requested -> ${host}:${port}`)
 
-    console.log(`[CONNECT] ${host}:${port}`)
     const serverSocket = net.connect(parseInt(port, 10), host, () => {
         console.log(`[CONNECT] Tunnel established -> ${host}:${port}`)
         clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
@@ -53,8 +53,34 @@ server.on('connect', (req, clientSocket, head) => {
         clientSocket.pipe(serverSocket)
     })
 
-    serverSocket.on('error', (err) => {
-        clientSocket.end(`Proxy tunnel error: ${err.message}`)
+    // --- Handle errors & prevent crashes ---
+    const onError = (err: Error, socket: net.Socket, label: string) => {
+        console.error(`[ERROR] ${label}: ${err.message}`)
+        try {
+            socket.destroy()
+        } catch (_) { }
+    }
+
+    const onSError = (err: Error, socket: Duplex, label: string) => {
+        console.error(`[ERROR] ${label}: ${err.message}`)
+        try {
+            socket.destroy()
+        } catch (_) { }
+    }
+
+    serverSocket.on('error', (err) => onSError(err, clientSocket , 'serverSocket'))
+    clientSocket.on('error', (err) => onError(err, serverSocket, 'clientSocket'))
+
+
+    // Handle abrupt close
+    serverSocket.on('close', () => {
+        console.log(`[CLOSE] serverSocket -> ${host}:${port}`)
+        clientSocket.end()
+    })
+
+    clientSocket.on('close', () => {
+        console.log(`[CLOSE] clientSocket -> ${host}:${port}`)
+        serverSocket.end()
     })
 })
 
